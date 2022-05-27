@@ -6,6 +6,8 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include <cmath>
+#include <complex>
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
@@ -58,7 +60,7 @@ VkFFTResult user_benchmark_VkFFT(VkGPU* vkGPU, uint64_t file_output, FILE* outpu
 #elif(VKFFT_BACKEND==4)
 	ze_result_t res = ZE_RESULT_SUCCESS;
 #endif
-	const int num_runs = 3;
+	const int num_runs = 1;
 	double benchmark_result = 0;//averaged result = sum(system_size/iteration_time)/num_benchmark_samples
 	//memory allocated on the CPU once, makes benchmark completion faster + avoids performance issues connected to frequent allocation/deallocation.
 	uint64_t storageComplexSize=8;
@@ -76,7 +78,7 @@ VkFFTResult user_benchmark_VkFFT(VkGPU* vkGPU, uint64_t file_output, FILE* outpu
 		storageComplexSize = (2 * sizeof(float));
 		break;
 	}
-	for (uint64_t n = 0; n < 2; n++) {
+	for (uint64_t n = 0; n < 1; n++) {
 		double run_time[num_runs];
 		for (uint64_t r = 0; r < num_runs; r++) {
 			//Configuration + FFT application .
@@ -136,8 +138,16 @@ VkFFTResult user_benchmark_VkFFT(VkGPU* vkGPU, uint64_t file_output, FILE* outpu
 #elif(VKFFT_BACKEND==1)
 			cuFloatComplex* buffer = 0;
 			res = cudaMalloc((void**)&buffer, bufferSize);
+
 			if (res != cudaSuccess) return VKFFT_ERROR_FAILED_TO_ALLOCATE;
 			configuration.buffer = (void**)&buffer;
+			std::vector<double> buffer_host((configuration.size[0] + 2) * configuration.size[1] * configuration.size[2] * configuration.numberBatches);
+			for (uint64_t j = 0; j < configuration.numberBatches; j++) {
+				for (uint64_t i = 0; i < configuration.size[0]; i++) {
+					buffer_host[i+j*(configuration.size[0]+2)] = std::sin(4*i*M_PI*2/configuration.size[0]);
+				}
+			}
+			cudaMemcpy(buffer, buffer_host.data(), bufferSize, cudaMemcpyHostToDevice);
 #elif(VKFFT_BACKEND==2)
 			hipFloatComplex* buffer = 0;
 			res = hipMalloc((void**)&buffer, bufferSize);
@@ -206,7 +216,7 @@ VkFFTResult user_benchmark_VkFFT(VkGPU* vkGPU, uint64_t file_output, FILE* outpu
 			resFFT = performVulkanFFTiFFT(vkGPU, &app, &launchParams, userParams->N, &totTime);
 			if (resFFT != VKFFT_SUCCESS) return resFFT;
 			run_time[r] = totTime;
-			if (n > 0) {
+			if (n >= 0) {
 				if (r == num_runs - 1) {
 					double std_error = 0;
 					double avg_time = 0;
@@ -231,6 +241,13 @@ VkFFTResult user_benchmark_VkFFT(VkGPU* vkGPU, uint64_t file_output, FILE* outpu
 
 
 			}
+
+			std::vector<double> result((configuration.size[0] + 2) * configuration.size[1] * configuration.size[2] * configuration.numberBatches);
+			cudaMemcpy(result.data(), buffer, bufferSize, cudaMemcpyDeviceToHost);
+			for (int i = 0; i < configuration.size[0]; i++) {
+				std::cout << i << " " << buffer_host[i] << " " << result[i] << "\n";
+			}
+
 
 #if(VKFFT_BACKEND==0)
 			vkDestroyBuffer(vkGPU->device, buffer, NULL);

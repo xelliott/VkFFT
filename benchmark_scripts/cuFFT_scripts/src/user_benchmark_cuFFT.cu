@@ -77,11 +77,11 @@ void user_benchmark_cuFFT(bool file_output, FILE* output, cuFFTUserSystemParamet
 			//forward + inverse
 			int iembed[2][3];
 			int istride[2] = { 1, 1 };
-			int idist[2] = {bufferSize / userParams->B / storageComplexSize, bufferSize / userParams->B / storageComplexSize};
+			int idist[2] = {static_cast<int>(bufferSize / userParams->B / storageComplexSize), static_cast<int>(bufferSize / userParams->B / storageComplexSize)};
 			if (userParams->R2C) idist[0] *= 2;
 			int oembed[2][3];
 			int ostride[2] = { 1, 1 };
-			int odist[2] = { bufferSize / userParams->B / storageComplexSize, bufferSize / userParams->B / storageComplexSize };
+			int odist[2] = { static_cast<int>(bufferSize / userParams->B / storageComplexSize), static_cast<int>(bufferSize / userParams->B / storageComplexSize) };
 			if (userParams->R2C) odist[1] *= 2;
 			switch (FFTdim) {
 			case 1:

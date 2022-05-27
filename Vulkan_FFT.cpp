@@ -40,18 +40,18 @@
 #include "utils_VkFFT.h"
 #include "half.hpp"
 #include "user_benchmark_VkFFT.h"
-#include "sample_0_benchmark_VkFFT_single.h"
-#include "sample_1_benchmark_VkFFT_double.h"
+// #include "sample_0_benchmark_VkFFT_single.h"
+// #include "sample_1_benchmark_VkFFT_double.h"
 #if(VKFFT_BACKEND==0)
 #include "sample_2_benchmark_VkFFT_half.h"
 #endif
-#include "sample_3_benchmark_VkFFT_single_3d.h"
-#include "sample_4_benchmark_VkFFT_single_3d_zeropadding.h"
-#include "sample_5_benchmark_VkFFT_single_disableReorderFourStep.h"
-#include "sample_6_benchmark_VkFFT_single_r2c.h"
-#include "sample_7_benchmark_VkFFT_single_Bluestein.h"
-#include "sample_8_benchmark_VkFFT_double_Bluestein.h"
-#include "sample_10_benchmark_VkFFT_single_multipleBuffers.h"
+// #include "sample_3_benchmark_VkFFT_single_3d.h"
+// #include "sample_4_benchmark_VkFFT_single_3d_zeropadding.h"
+// #include "sample_5_benchmark_VkFFT_single_disableReorderFourStep.h"
+// #include "sample_6_benchmark_VkFFT_single_r2c.h"
+// #include "sample_7_benchmark_VkFFT_single_Bluestein.h"
+// #include "sample_8_benchmark_VkFFT_double_Bluestein.h"
+// #include "sample_10_benchmark_VkFFT_single_multipleBuffers.h"
 #ifdef USE_FFTW
 #include "sample_11_precision_VkFFT_single.h"
 #include "sample_12_precision_VkFFT_double.h"
@@ -64,28 +64,28 @@
 #include "sample_17_precision_VkFFT_double_dct.h"
 #include "sample_18_precision_VkFFT_double_nonPow2.h"
 #endif
-#include "sample_50_convolution_VkFFT_single_1d_matrix.h"
-#include "sample_51_convolution_VkFFT_single_3d_matrix_zeropadding_r2c.h"
+// #include "sample_50_convolution_VkFFT_single_1d_matrix.h"
+// #include "sample_51_convolution_VkFFT_single_3d_matrix_zeropadding_r2c.h"
 #include "sample_52_convolution_VkFFT_single_2d_batched_r2c.h"
 
-#include "sample_100_benchmark_VkFFT_single_nd_dct.h"
-#include "sample_101_benchmark_VkFFT_double_nd_dct.h"
-#include "sample_1000_VkFFT_single_2_4096.h"
-#include "sample_1001_benchmark_VkFFT_double_2_4096.h"
-#include "sample_1003_benchmark_VkFFT_single_3d_2_512.h"
+// #include "sample_100_benchmark_VkFFT_single_nd_dct.h"
+// #include "sample_101_benchmark_VkFFT_double_nd_dct.h"
+// #include "sample_1000_VkFFT_single_2_4096.h"
+// #include "sample_1001_benchmark_VkFFT_double_2_4096.h"
+// #include "sample_1003_benchmark_VkFFT_single_3d_2_512.h"
 
 #ifdef USE_cuFFT
-#include "user_benchmark_cuFFT.h"
-#include "sample_0_benchmark_cuFFT_single.h"
-#include "sample_1_benchmark_cuFFT_double.h"
-#include "sample_2_benchmark_cuFFT_half.h"
-#include "sample_3_benchmark_cuFFT_single_3d.h"
-#include "sample_6_benchmark_cuFFT_single_r2c.h"
-#include "sample_7_benchmark_cuFFT_single_Bluestein.h"
-#include "sample_8_benchmark_cuFFT_double_Bluestein.h"
-#include "sample_1000_benchmark_cuFFT_single_2_4096.h"
-#include "sample_1001_benchmark_cuFFT_double_2_4096.h"
-#include "sample_1003_benchmark_cuFFT_single_3d_2_512.h"
+// #include "user_benchmark_cuFFT.h"
+// #include "sample_0_benchmark_cuFFT_single.h"
+// #include "sample_1_benchmark_cuFFT_double.h"
+// #include "sample_2_benchmark_cuFFT_half.h"
+// #include "sample_3_benchmark_cuFFT_single_3d.h"
+// #include "sample_6_benchmark_cuFFT_single_r2c.h"
+// #include "sample_7_benchmark_cuFFT_single_Bluestein.h"
+// #include "sample_8_benchmark_cuFFT_double_Bluestein.h"
+// #include "sample_1000_benchmark_cuFFT_single_2_4096.h"
+// #include "sample_1001_benchmark_cuFFT_double_2_4096.h"
+// #include "sample_1003_benchmark_cuFFT_single_3d_2_512.h"
 #endif  
 #ifdef USE_rocFFT
 #include "user_benchmark_rocFFT.h"
@@ -277,12 +277,12 @@ VkFFTResult launchVkFFT(VkGPU* vkGPU, uint64_t sample_id, bool file_output, FILE
 	switch (sample_id) {
 	case 0:
 	{
-		resFFT = sample_0_benchmark_VkFFT_single(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_0_benchmark_VkFFT_single(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 1:
 	{
-		resFFT = sample_1_benchmark_VkFFT_double(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_1_benchmark_VkFFT_double(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 #if ((VKFFT_BACKEND==0)&&(VK_API_VERSION>10))
@@ -294,32 +294,32 @@ VkFFTResult launchVkFFT(VkGPU* vkGPU, uint64_t sample_id, bool file_output, FILE
 #endif
 	case 3:
 	{
-		resFFT = sample_3_benchmark_VkFFT_single_3d(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_3_benchmark_VkFFT_single_3d(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 4:
 	{
-		resFFT = sample_4_benchmark_VkFFT_single_3d_zeropadding(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_4_benchmark_VkFFT_single_3d_zeropadding(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 5:
 	{
-		resFFT = sample_5_benchmark_VkFFT_single_disableReorderFourStep(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_5_benchmark_VkFFT_single_disableReorderFourStep(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 6:
 	{
-		resFFT = sample_6_benchmark_VkFFT_single_r2c(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_6_benchmark_VkFFT_single_r2c(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 7:
 	{
-		resFFT = sample_7_benchmark_VkFFT_single_Bluestein(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_7_benchmark_VkFFT_single_Bluestein(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 8:
 	{
-		resFFT = sample_8_benchmark_VkFFT_double_Bluestein(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_8_benchmark_VkFFT_double_Bluestein(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 #if(VKFFT_BACKEND==0)
@@ -375,12 +375,12 @@ VkFFTResult launchVkFFT(VkGPU* vkGPU, uint64_t sample_id, bool file_output, FILE
 #endif
 	case 50:
 	{
-		resFFT = sample_50_convolution_VkFFT_single_1d_matrix(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_50_convolution_VkFFT_single_1d_matrix(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 51:
 	{
-		resFFT = sample_51_convolution_VkFFT_single_3d_matrix_zeropadding_r2c(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_51_convolution_VkFFT_single_3d_matrix_zeropadding_r2c(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 52:
@@ -390,42 +390,42 @@ VkFFTResult launchVkFFT(VkGPU* vkGPU, uint64_t sample_id, bool file_output, FILE
 	}
 	case 110:
 	{
-		resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 1);
+		// resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 1);
 		break;
 	}
 	case 120:
 	{
-		resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 2);
+		// resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 2);
 		break;
 	}
 	case 130:
 	{
-		resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 3);
+		// resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 3);
 		break;
 	}
 	case 140:
 	{
-		resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 4);
+		// resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 4);
 		break;
 	}
 	case 111:
 	{
-		resFFT = sample_101_benchmark_VkFFT_double_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 1);
+		// resFFT = sample_101_benchmark_VkFFT_double_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 1);
 		break;
 	}
 	case 121:
 	{
-		resFFT = sample_101_benchmark_VkFFT_double_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 2);
+		// resFFT = sample_101_benchmark_VkFFT_double_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 2);
 		break;
 	}
 	case 131:
 	{
-		resFFT = sample_101_benchmark_VkFFT_double_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 3);
+		// resFFT = sample_101_benchmark_VkFFT_double_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 3);
 		break;
 	}
 	case 141:
 	{
-		resFFT = sample_101_benchmark_VkFFT_double_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 4);
+		// resFFT = sample_101_benchmark_VkFFT_double_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 4);
 		break;
 	}
 	case 200: case 201:
@@ -442,17 +442,17 @@ VkFFTResult launchVkFFT(VkGPU* vkGPU, uint64_t sample_id, bool file_output, FILE
 #endif
 	case 1000:
 	{
-		resFFT = sample_1000_VkFFT_single_2_4096(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_1000_VkFFT_single_2_4096(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 1001:
 	{
-		resFFT = sample_1001_benchmark_VkFFT_double_2_4096(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_1001_benchmark_VkFFT_double_2_4096(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	case 1003:
 	{
-		resFFT = sample_1003_benchmark_VkFFT_single_3d_2_512(vkGPU, file_output, output, isCompilerInitialized);
+		// resFFT = sample_1003_benchmark_VkFFT_single_3d_2_512(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
 	}
@@ -837,9 +837,9 @@ int main(int argc, char* argv[])
 		}
 		else {
 #ifdef USE_cuFFT
-			if (findFlag(argv, argv + argc, "-benchmark_cufft")) {
-				user_benchmark_cuFFT(file_output, output, (cuFFTUserSystemParameters*)(&userParams));
-			}
+			// if (findFlag(argv, argv + argc, "-benchmark_cufft")) {
+			// 	user_benchmark_cuFFT(file_output, output, (cuFFTUserSystemParameters*)(&userParams));
+			// }
 			return 0;
 #elif USE_rocFFT
 			if (findFlag(argv, argv + argc, "-benchmark_rocfft")) {
@@ -872,55 +872,55 @@ int main(int argc, char* argv[])
 		}
 	}
 #ifdef USE_cuFFT
-	if (findFlag(argv, argv + argc, "-cufft"))
-	{
-		//select sample_id
-		char* value = getFlagValue(argv, argv + argc, "-cufft");
-		if (value != 0) {
-			uint64_t sample_id = 0;
-			sscanf_res = sscanf(value, "%" PRIu64 "", &sample_id);
-			if (sscanf_res <= 0) {
-				printf("sscanf failed\n");
-				return 1;
-			}
-			switch (sample_id) {
-			case 0:
-				sample_0_benchmark_cuFFT_single(file_output, output);
-				break;
-			case 1:
-				sample_1_benchmark_cuFFT_double(file_output, output);
-				break;
-			case 2:
-				sample_2_benchmark_cuFFT_half(file_output, output);
-				break;
-			case 3:
-				sample_3_benchmark_cuFFT_single_3d(file_output, output);
-				break;
-			case 6:
-				sample_6_benchmark_cuFFT_single_r2c(file_output, output);
-				break;
-			case 7:
-				sample_7_benchmark_cuFFT_single_Bluestein(file_output, output);
-				break;
-			case 8:
-				sample_8_benchmark_cuFFT_double_Bluestein(file_output, output);
-				break;
-			case 1000:
-				sample_1000_benchmark_cuFFT_single_2_4096(file_output, output);
-				break;
-			case 1001:
-				sample_1001_benchmark_cuFFT_double_2_4096(file_output, output);
-				break;
-			case 1003:
-				sample_1003_benchmark_cuFFT_single_3d_2_512(file_output, output);
-				break;
-			}
-		}
-		else {
-			printf("No cuFFT script is selected with -cufft flag\n");
-			return 1;
-		}
-	}
+	// if (findFlag(argv, argv + argc, "-cufft"))
+	// {
+	// 	//select sample_id
+	// 	char* value = getFlagValue(argv, argv + argc, "-cufft");
+	// 	if (value != 0) {
+	// 		uint64_t sample_id = 0;
+	// 		sscanf_res = sscanf(value, "%" PRIu64 "", &sample_id);
+	// 		if (sscanf_res <= 0) {
+	// 			printf("sscanf failed\n");
+	// 			return 1;
+	// 		}
+	// 		switch (sample_id) {
+	// 		case 0:
+	// 			sample_0_benchmark_cuFFT_single(file_output, output);
+	// 			break;
+	// 		case 1:
+	// 			sample_1_benchmark_cuFFT_double(file_output, output);
+	// 			break;
+	// 		case 2:
+	// 			sample_2_benchmark_cuFFT_half(file_output, output);
+	// 			break;
+	// 		case 3:
+	// 			sample_3_benchmark_cuFFT_single_3d(file_output, output);
+	// 			break;
+	// 		case 6:
+	// 			sample_6_benchmark_cuFFT_single_r2c(file_output, output);
+	// 			break;
+	// 		case 7:
+	// 			sample_7_benchmark_cuFFT_single_Bluestein(file_output, output);
+	// 			break;
+	// 		case 8:
+	// 			sample_8_benchmark_cuFFT_double_Bluestein(file_output, output);
+	// 			break;
+	// 		case 1000:
+	// 			sample_1000_benchmark_cuFFT_single_2_4096(file_output, output);
+	// 			break;
+	// 		case 1001:
+	// 			sample_1001_benchmark_cuFFT_double_2_4096(file_output, output);
+	// 			break;
+	// 		case 1003:
+	// 			sample_1003_benchmark_cuFFT_single_3d_2_512(file_output, output);
+	// 			break;
+	// 		}
+	// 	}
+	// 	else {
+	// 		printf("No cuFFT script is selected with -cufft flag\n");
+	// 		return 1;
+	// 	}
+	// }
 #elif USE_rocFFT
 	if (findFlag(argv, argv + argc, "-rocfft"))
 	{
@@ -983,13 +983,13 @@ int main(int argc, char* argv[])
 			if (resFFT != VKFFT_SUCCESS) return resFFT;
 		}
 #ifdef USE_cuFFT
-		sample_0_benchmark_cuFFT_single(file_output, output);
-		sample_1_benchmark_cuFFT_double(file_output, output);
-		sample_2_benchmark_cuFFT_half(file_output, output);
-		sample_3_benchmark_cuFFT_single_3d(file_output, output);
-		sample_6_benchmark_cuFFT_single_r2c(file_output, output);
-		sample_7_benchmark_cuFFT_single_Bluestein(file_output, output);
-		sample_8_benchmark_cuFFT_double_Bluestein(file_output, output);
+		// sample_0_benchmark_cuFFT_single(file_output, output);
+		// sample_1_benchmark_cuFFT_double(file_output, output);
+		// sample_2_benchmark_cuFFT_half(file_output, output);
+		// sample_3_benchmark_cuFFT_single_3d(file_output, output);
+		// sample_6_benchmark_cuFFT_single_r2c(file_output, output);
+		// sample_7_benchmark_cuFFT_single_Bluestein(file_output, output);
+		// sample_8_benchmark_cuFFT_double_Bluestein(file_output, output);
 #elif USE_rocFFT
 		sample_0_benchmark_rocFFT_single(file_output, output);
 		sample_1_benchmark_rocFFT_double(file_output, output);
