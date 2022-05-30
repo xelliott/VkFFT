@@ -1663,7 +1663,7 @@ static inline VkFFTResult indexInputVkFFT(VkFFTSpecializationConstantsLayout* sc
 			sprintf(shiftX, "(%s) * %" PRIu64 "", index_x, sc->inputStride[0]);
 		char shiftY[500] = "";
 		uint64_t mult = (sc->mergeSequencesR2C) ? 2 : 1;
-		if (sc->size[1] > 1) {
+		if (sc->size[1] > 1 && inputType < 1000) {
 			if (sc->numAxisUploads == 1) {
 				if (sc->axisSwapped) {
 					if (sc->performWorkGroupShift[1])
@@ -23966,7 +23966,8 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 
 	axis->specializationConstants.sourceFFTSize = app->configuration.size[axis_id];
 	axis->specializationConstants.numBatches = app->configuration.numberBatches;
-	if ((app->configuration.FFTdim == 1) && (FFTPlan->actualFFTSizePerAxis[axis_id][1] == 1) && ((app->configuration.numberBatches > 1) || (app->actualNumBatches > 1)) && (!app->configuration.performConvolution) && (app->configuration.coordinateFeatures == 1)) {
+	// if ((app->configuration.FFTdim == 1) && (FFTPlan->actualFFTSizePerAxis[axis_id][1] == 1) && ((app->configuration.numberBatches > 1) || (app->actualNumBatches > 1)) && (!app->configuration.performConvolution) && (app->configuration.coordinateFeatures == 1)) {
+	if ((app->configuration.FFTdim == 1) && (FFTPlan->actualFFTSizePerAxis[axis_id][1] == 1) && ((app->configuration.numberBatches > 1) || (app->actualNumBatches > 1)) && (app->configuration.coordinateFeatures == 1)) {
 		if (app->configuration.numberBatches > 1) {
 			app->actualNumBatches = app->configuration.numberBatches;
 			app->configuration.numberBatches = 1;
