@@ -1742,8 +1742,13 @@ static inline VkFFTResult indexInputVkFFT(VkFFTSpecializationConstantsLayout* sc
 			sprintf(shiftX, "(%s) * %" PRIu64 "", index_x, sc->inputStride[0]);
 
 		char shiftY[500] = "";
-		if (index_y)
-			sprintf(shiftY, " + (%s) * %" PRIu64 "", index_y, sc->inputStride[1]);
+		if (index_y) {
+			if (inputType < 1000)
+				sprintf(shiftY, " + (%s) * %" PRIu64 "", index_y, sc->inputStride[1]);
+			else
+				// when called to read from the appendKernelConvolution, the inputType >= 1000 and the following is not executed to allow 1 kernel to be convolved with multiple batches
+				sprintf(shiftY, " + (%s) * %" PRIu64 "", index_y, sc->inputStride[0]);
+		}
 
 		char shiftZ[500] = "";
 		if (sc->size[2] > 1) {
@@ -11966,8 +11971,14 @@ static inline VkFFTResult appendKernelConvolution(VkFFTSpecializationConstantsLa
 			sc->tempLen = sprintf(sc->tempStr, "			%s = ", sc->inoutID);
 			res = VkAppendLine(sc);
 			if (res != VKFFT_SUCCESS) return res;
-			sprintf(index_x, "(%s%s) %% (%" PRIu64 ")", sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x);
-			sprintf(index_y, "(%s+%" PRIu64 ")+((%s%s)/%" PRIu64 ")%%(%" PRIu64 ")+((%s%s)/%" PRIu64 ")*(%" PRIu64 ")", sc->gl_LocalInvocationID_y, i * sc->localSize[1], sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x, sc->stageStartSize, sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x * sc->stageStartSize, sc->fftDim);
+			if (sc->mergeSequencesR2C == 1 && sc->axisSwapped == 1 && sc->axis_id == 0) {
+				// for 1D convolution, no shift to allow N batch 1 kernel convolution
+				sprintf(index_x, "(%s%s) %% (%" PRIu64 ")", sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x);
+				sprintf(index_y, "(%s+%" PRIu64 ")", sc->gl_LocalInvocationID_y, i * sc->localSize[1]);
+			} else {
+				sprintf(index_x, "(%s%s) %% (%" PRIu64 ")", sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x);
+				sprintf(index_y, "(%s+%" PRIu64 ")+((%s%s)/%" PRIu64 ")%%(%" PRIu64 ")+((%s%s)/%" PRIu64 ")*(%" PRIu64 ")", sc->gl_LocalInvocationID_y, i * sc->localSize[1], sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x, sc->stageStartSize, sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x * sc->stageStartSize, sc->fftDim);
+			}
 			uint64_t tempSaveInputOffset = sc->inputOffset;
 			uint64_t tempSaveInputNumberByteSize = sc->inputNumberByteSize;
 			sc->inputOffset = sc->kernelOffset;
