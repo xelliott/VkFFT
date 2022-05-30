@@ -1714,9 +1714,8 @@ static inline VkFFTResult indexInputVkFFT(VkFFTSpecializationConstantsLayout* sc
 			if (sc->convolutionStep && (sc->numKernels > 1)) {
 				sprintf(shiftBatch, " + %s * %" PRIu64 "", batchID, sc->inputStride[4]);
 			}
-			// The following is commented out to do N batches with 1 kernel
-			// else
-				// sprintf(shiftBatch, " + (%s / %" PRIu64 ") * %" PRIu64 "", sc->gl_GlobalInvocationID_z, sc->dispatchZactualFFTSize * maxCoordinate, sc->inputStride[4]);
+			else if (inputType < 1000) // when called to read from the appendKernelConvolution, the inputType >= 1000 and the following is not executed to allow 1 kernel to be convolved with multiple batches
+				sprintf(shiftBatch, " + (%s / %" PRIu64 ") * %" PRIu64 "", sc->gl_GlobalInvocationID_z, sc->dispatchZactualFFTSize * maxCoordinate, sc->inputStride[4]);
 		}
 		sc->tempLen = sprintf(sc->tempStr, "%s%s%s%s%s%s", inputOffset, shiftX, shiftY, shiftZ, shiftCoordinate, shiftBatch);
 		res = VkAppendLine(sc);
@@ -17814,6 +17813,22 @@ static inline VkFFTResult shaderGenVkFFT(char* output, VkFFTSpecializationConsta
 		freeShaderGenVkFFT(sc);
 		return res;
 	}
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp0 %%d %%d %%d %%d %%f %%f\\n\", blockIdx.z, threadIdx.x, threadIdx.y, inoutID, temp_0.x, temp_0.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp1 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.z, threadIdx.x, threadIdx.y, inoutID, temp_1.x, temp_1.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp2 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.z, threadIdx.x, threadIdx.y, inoutID, temp_2.x, temp_2.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp3 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.z, threadIdx.x, threadIdx.y, inoutID, temp_3.x, temp_3.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp4 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.z, threadIdx.x, threadIdx.y, inoutID, temp_4.x, temp_4.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp5 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.z, threadIdx.x, threadIdx.y, inoutID, temp_5.x, temp_5.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp6 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.z, threadIdx.x, threadIdx.y, inoutID, temp_6.x, temp_6.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp7 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.z, threadIdx.x, threadIdx.y, inoutID, temp_7.x, temp_7.y);\n");
+		// res = VkAppendLine(sc);
 	if (sc->useBluesteinFFT && sc->BluesteinPreMultiplication) {
 		res = appendBluesteinMultiplication(sc, floatType, uintType, locType, 0);
 		if (res != VKFFT_SUCCESS) {
@@ -17901,6 +17916,22 @@ static inline VkFFTResult shaderGenVkFFT(char* output, VkFFTSpecializationConsta
 		}
 	}
 
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp0 %%d %%d %%d %%d %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_0.x, temp_0.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp1 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_1.x, temp_1.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp2 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_2.x, temp_2.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp3 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_3.x, temp_3.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp4 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_4.x, temp_4.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp5 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_5.x, temp_5.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp6 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_6.x, temp_6.y);\n");
+		// res = VkAppendLine(sc);
+		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp7 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_7.x, temp_7.y);\n");
+		// res = VkAppendLine(sc);
 	if ((sc->convolutionStep) || (sc->useBluesteinFFT && sc->BluesteinConvolutionStep)) {
 		res = appendCoordinateRegisterStore(sc, locType);
 		if (res != VKFFT_SUCCESS) {
@@ -17957,22 +17988,6 @@ static inline VkFFTResult shaderGenVkFFT(char* output, VkFFTSpecializationConsta
 			return res;
 		}
 
-		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp0 %%d %%d %%d %%d %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_0.x, temp_0.y);\n");
-		// res = VkAppendLine(sc);
-		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp1 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_1.x, temp_1.y);\n");
-		// res = VkAppendLine(sc);
-		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp2 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_2.x, temp_2.y);\n");
-		// res = VkAppendLine(sc);
-		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp3 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_3.x, temp_3.y);\n");
-		// res = VkAppendLine(sc);
-		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp4 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_4.x, temp_4.y);\n");
-		// res = VkAppendLine(sc);
-		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp5 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_5.x, temp_5.y);\n");
-		// res = VkAppendLine(sc);
-		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp6 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_6.x, temp_6.y);\n");
-		// res = VkAppendLine(sc);
-		// sc->tempLen = sprintf(sc->tempStr, "printf(\"temp7 %%d %%d %%d %%u %%f %%f\\n\", blockIdx.x, threadIdx.x, threadIdx.y, inoutID, temp_7.x, temp_7.y);\n");
-		// res = VkAppendLine(sc);
 		stageSize = 1;
 		stageSizeSum = 0;
 		stageAngle = PI_const;
@@ -23384,7 +23399,7 @@ static inline VkFFTResult VkFFTPlanR2CMultiUploadDecomposition(VkFFTApplication*
 		}
 		else {
 			nvrtcProgram prog;
-			printf("%s\n", code0);
+			// printf("%s\n", code0);
 			nvrtcResult result = nvrtcCreateProgram(&prog,         // prog
 				code0,         // buffer
 				"VkFFT.cu",    // name
@@ -25849,7 +25864,7 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 		}
 		else {
 			nvrtcProgram prog;
-			printf("%s\n", code0);
+			// printf("%s\n", code0);
 			nvrtcResult result = nvrtcCreateProgram(&prog,         // prog
 				code0,         // buffer
 				"VkFFT.cu",    // name
