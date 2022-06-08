@@ -60,6 +60,7 @@
 #include <ze_api.h>
 #endif
 
+#if !defined(VKFFT_TYPES_H)
 typedef struct {
 	//WHDCN layout
 
@@ -664,6 +665,7 @@ typedef struct {
 	uint64_t applicationStringSize;//size of saveApplicationString in bytes
 	void* saveApplicationString;//memory array(uint32_t* for Vulkan, char* for CUDA/HIP/OpenCL) through which user can access VkFFT generated binaries. (will be allocated by VkFFT, deallocated with deleteVkFFT call)
 } VkFFTApplication;
+#endif
 
 static inline VkFFTResult VkAppendLine(VkFFTSpecializationConstantsLayout* sc) {
 	//appends code line stored in tempStr to generated code
@@ -1663,7 +1665,7 @@ static inline VkFFTResult indexInputVkFFT(VkFFTSpecializationConstantsLayout* sc
 			sprintf(shiftX, "(%s) * %" PRIu64 "", index_x, sc->inputStride[0]);
 		char shiftY[500] = "";
 		uint64_t mult = (sc->mergeSequencesR2C) ? 2 : 1;
-		if (sc->size[1] > 1 && inputType < 1000) {
+		if (sc->size[1] > 1 && inputType < 1000) { // Elliott: when called to read from the appendKernelConvolution, the inputType >= 1000 and the following is not executed to allow 1 kernel to be convolved with multiple batches
 			if (sc->numAxisUploads == 1) {
 				if (sc->axisSwapped) {
 					if (sc->performWorkGroupShift[1])
@@ -1714,7 +1716,7 @@ static inline VkFFTResult indexInputVkFFT(VkFFTSpecializationConstantsLayout* sc
 			if (sc->convolutionStep && (sc->numKernels > 1)) {
 				sprintf(shiftBatch, " + %s * %" PRIu64 "", batchID, sc->inputStride[4]);
 			}
-			else if (inputType < 1000) // when called to read from the appendKernelConvolution, the inputType >= 1000 and the following is not executed to allow 1 kernel to be convolved with multiple batches
+			else if (inputType < 1000) // Elliott: when called to read from the appendKernelConvolution, the inputType >= 1000 and the following is not executed to allow 1 kernel to be convolved with multiple batches
 				sprintf(shiftBatch, " + (%s / %" PRIu64 ") * %" PRIu64 "", sc->gl_GlobalInvocationID_z, sc->dispatchZactualFFTSize * maxCoordinate, sc->inputStride[4]);
 		}
 		sc->tempLen = sprintf(sc->tempStr, "%s%s%s%s%s%s", inputOffset, shiftX, shiftY, shiftZ, shiftCoordinate, shiftBatch);
@@ -1746,7 +1748,7 @@ static inline VkFFTResult indexInputVkFFT(VkFFTSpecializationConstantsLayout* sc
 			if (inputType < 1000)
 				sprintf(shiftY, " + (%s) * %" PRIu64 "", index_y, sc->inputStride[1]);
 			else
-				// when called to read from the appendKernelConvolution, the inputType >= 1000 and the following is not executed to allow 1 kernel to be convolved with multiple batches
+				// when called to read from the appendKernelConvolution, the inputType >= 1000 and the following is executed to allow 1 kernel to be convolved with multiple batches
 				sprintf(shiftY, " + (%s) * %" PRIu64 "", index_y, sc->inputStride[0]);
 		}
 
@@ -11899,7 +11901,7 @@ static inline VkFFTResult appendKernelConvolution(VkFFTSpecializationConstantsLa
 			}
 		}
 		switch (dataType) {
-		case 0: case 5:
+		case 0: case 5: //Elliott: case 5 is added to correct 1D R2C convolution
 		{
 			if (sc->fftDim == sc->fft_dim_full) {
 				if (sc->localSize[1] == 1)
@@ -11971,12 +11973,11 @@ static inline VkFFTResult appendKernelConvolution(VkFFTSpecializationConstantsLa
 			sc->tempLen = sprintf(sc->tempStr, "			%s = ", sc->inoutID);
 			res = VkAppendLine(sc);
 			if (res != VKFFT_SUCCESS) return res;
-			if (sc->mergeSequencesR2C == 1 && sc->axisSwapped == 1 && sc->axis_id == 0) {
-				// for 1D convolution, no shift to allow N batch 1 kernel convolution
-				sprintf(index_x, "(%s%s) %% (%" PRIu64 ")", sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x);
+			sprintf(index_x, "(%s%s) %% (%" PRIu64 ")", sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x);
+      			if (sc->mergeSequencesR2C == 1 && sc->axisSwapped == 1 && sc->axis_id == 0) {
+				// Elliott: this branch is added for 1D convolution, no shift to allow N batch 1 kernel convolution
 				sprintf(index_y, "(%s+%" PRIu64 ")", sc->gl_LocalInvocationID_y, i * sc->localSize[1]);
 			} else {
-				sprintf(index_x, "(%s%s) %% (%" PRIu64 ")", sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x);
 				sprintf(index_y, "(%s+%" PRIu64 ")+((%s%s)/%" PRIu64 ")%%(%" PRIu64 ")+((%s%s)/%" PRIu64 ")*(%" PRIu64 ")", sc->gl_LocalInvocationID_y, i * sc->localSize[1], sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x, sc->stageStartSize, sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x * sc->stageStartSize, sc->fftDim);
 			}
 			uint64_t tempSaveInputOffset = sc->inputOffset;
@@ -12358,9 +12359,9 @@ static inline VkFFTResult appendWriteDataVkFFT(VkFFTSpecializationConstantsLayou
 		if (sc->numKernels > 1) {
 			sprintf(requestBatch, "batchID");//if one buffer - multiple kernel convolution
 		}
-		// If one-dimensional convolution, the output of R2C is already inverse transformed
+		// Elliott: If one-dimensional convolution, the output of R2C is already inverse transformed
 		if (sc->axis_id == 0 && sc->performR2C == 1 && sc->inverse == 1 && sc->actualInverse == 0 &&
-		  ((sc->size[1] == 1 && sc->size[2] == 1) || (sc->size[2] == 1 && sc->mergeSequencesR2C == 1))) {
+		  (sc->axis_upload_id == 0 && sc->numAxisUploads == 1)) {
 				writeType = 6;
 		}
 	}
@@ -17119,7 +17120,7 @@ static inline void freeShaderGenVkFFT(VkFFTSpecializationConstantsLayout* sc) {
 		free(sc->disableThreadsStart);
 		sc->disableThreadsStart = 0;
 	}
-	if (sc->disableThreadsStart) {
+	if (sc->disableThreadsEnd) {
 		free(sc->disableThreadsEnd);
 		sc->disableThreadsEnd = 0;
 	}
@@ -17385,7 +17386,8 @@ static inline VkFFTResult shaderGenVkFFT(char* output, VkFFTSpecializationConsta
 	case 5:
 	{
 		if (sc->convolutionStep == 1 && sc->axis_id == 0 && sc->performR2C == 1 && sc->actualInverse == 0 &&
-				((sc->size[1] == 1 && sc->size[2] == 1) || (sc->size[2] == 1 && sc->mergeSequencesR2C == 1))) {
+		  (sc->axis_upload_id == 0 && sc->numAxisUploads == 1)) {
+			// Elliott: for 1D R2C convolution, the output is inverse transformed already so the output type is floatType
 			sc->tempLen = sprintf(sc->tempStr, "(%s* inputs, %s* outputs", floatTypeInputMemory, floatTypeOutputMemory);
 		} else {
 			sc->tempLen = sprintf(sc->tempStr, "(%s* inputs, %s* outputs", floatTypeInputMemory, vecTypeOutput);
@@ -18441,7 +18443,7 @@ static inline void deleteVkFFT(VkFFTApplication* app) {
 #elif(VKFFT_BACKEND==4)
 			ze_result_t res = ZE_RESULT_SUCCESS;
 			if (app->bufferBluestein[i] != 0) {
-				res = zeMemFree(app->configuration.context[0],app->bufferBluestein[i]);
+				res = zeMemFree(app->configuration.context[0], app->bufferBluestein[i]);
 				app->bufferBluestein[i] = 0;
 			}
 			if (app->bufferBluesteinFFT[i] != 0) {
@@ -20455,6 +20457,10 @@ static inline VkFFTResult VkFFTScheduler(VkFFTApplication* app, VkFFTPlan* FFTPl
 		if (maxBatchCoalesced * locAxisSplit[k] / (min_registers_per_thread * registerBoost) > app->configuration.maxThreadsNum)
 		{
 			uint64_t scaleRegistersNum = 1;
+			if ((axis_id == 0) && (k == 0) && (maxBatchCoalesced > 1)) {
+				maxBatchCoalesced = app->configuration.maxThreadsNum * (min_registers_per_thread * registerBoost) / locAxisSplit[k];
+				if (maxBatchCoalesced < 1) maxBatchCoalesced = 1;
+			}
 			if ((maxBatchCoalesced * locAxisSplit[k] / (min_registers_per_thread * registerBoost * scaleRegistersNum)) > app->configuration.maxThreadsNum) {
 				for (uint64_t i = 2; i < locAxisSplit[k]; i++) {
 					if ((locAxisSplit[k] / (min_registers_per_thread * registerBoost * scaleRegistersNum) % i == 0) && ((maxBatchCoalesced * locAxisSplit[k] / (min_registers_per_thread * registerBoost * i)) <= app->configuration.maxThreadsNum)) {
@@ -20676,7 +20682,7 @@ static inline VkFFTResult VkFFTGeneratePhaseVectors(VkFFTApplication* app, VkFFT
 	device_desc.stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC;
 	res = zeMemAllocDevice(app->configuration.context[0], &device_desc, bufferSize, sizeof(float), app->configuration.device[0], &app->bufferBluestein[axis_id]);
 	if (res != ZE_RESULT_SUCCESS) return VKFFT_ERROR_FAILED_TO_ALLOCATE;
-	
+
 	if (!app->configuration.makeInversePlanOnly) {
 		res = zeMemAllocDevice(app->configuration.context[0], &device_desc, bufferSize, sizeof(float), app->configuration.device[0], &app->bufferBluesteinFFT[axis_id]);
 		if (res != ZE_RESULT_SUCCESS) return VKFFT_ERROR_FAILED_TO_ALLOCATE;
@@ -20894,7 +20900,7 @@ static inline VkFFTResult VkFFTGeneratePhaseVectors(VkFFTApplication* app, VkFFT
 		commandListDescription.stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC;
 		ze_command_list_handle_t commandList = {};
 		res = zeCommandListCreate(app->configuration.context[0], app->configuration.device[0], &commandListDescription, &commandList);
-		if (res != ZE_RESULT_SUCCESS) return VKFFT_ERROR_FAILED_TO_CREATE_COMMAND_LIST;																		
+		if (res != ZE_RESULT_SUCCESS) return VKFFT_ERROR_FAILED_TO_CREATE_COMMAND_LIST;
 		VkFFTLaunchParams launchParams = {};
 		launchParams.commandList = &commandList;
 		launchParams.inputBuffer = &app->bufferBluestein[axis_id];
@@ -21245,7 +21251,7 @@ static inline VkFFTResult VkFFTGeneratePhaseVectors(VkFFTApplication* app, VkFFT
 	VkFFTLaunchParams launchParams = {};
 	launchParams.commandList = &commandList;
 	launchParams.inputBuffer = &app->bufferBluestein[axis_id];
-	
+
 	if (!app->configuration.makeInversePlanOnly) {
 		launchParams.buffer = &app->bufferBluesteinFFT[axis_id];
 		resFFT = VkFFTAppend(&kernelPreparationApplication, -1, &launchParams);
@@ -22128,6 +22134,8 @@ static inline VkFFTResult VkFFTUpdateBufferSetR2CMultiUploadDecomposition(VkFFTA
 									axis->outputBuffer = app->configuration.tempBuffer;
 #if(VKFFT_BACKEND==0)
 									descriptorBufferInfo.buffer = app->configuration.tempBuffer[bufferId];
+									descriptorBufferInfo.range = (axis->specializationConstants.outputBufferBlockSize * storageComplexSize);
+									descriptorBufferInfo.offset = offset * (axis->specializationConstants.outputBufferBlockSize * storageComplexSize);
 #endif
 								}
 								if (axis->specializationConstants.performOffsetUpdate) {
@@ -23824,7 +23832,7 @@ static inline VkFFTResult VkFFTPlanR2CMultiUploadDecomposition(VkFFTApplication*
 				(uint8_t*)code,
 				pBuildFlags,
 				0
-			};		
+			};
 			res = zeModuleCreate(app->configuration.context[0], app->configuration.device[0], &moduleDesc, &axis->VkFFTModule, 0);
 			if (res != ZE_RESULT_SUCCESS) {
 				free(code);
@@ -23870,7 +23878,7 @@ static inline VkFFTResult VkFFTPlanR2CMultiUploadDecomposition(VkFFTApplication*
 			fseek(temp, 0L, SEEK_END);
 			uint64_t spv_size = ftell(temp);
 			rewind(temp);
-			
+
 			uint8_t* spv_binary = (uint8_t*)malloc(spv_size);
 			if (!spv_binary) {
 				free(code0);
@@ -23897,14 +23905,14 @@ static inline VkFFTResult VkFFTPlanR2CMultiUploadDecomposition(VkFFTApplication*
 			res = zeModuleCreate(app->configuration.context[0], app->configuration.device[0], &moduleDesc, &axis->VkFFTModule, 0);
 			if (res != ZE_RESULT_SUCCESS) {
 				free(spv_binary);
-				spv_binary=0;
+				spv_binary = 0;
 				free(code0);
 				code0 = 0;
 				deleteVkFFT(app);
 				return VKFFT_ERROR_FAILED_TO_CREATE_PROGRAM;
 			}
 			free(spv_binary);
-			spv_binary=0;
+			spv_binary = 0;
 			if (app->configuration.saveApplicationToString) {
 				size_t codeSize;
 				res = zeModuleGetNativeBinary(axis->VkFFTModule, &codeSize, 0);
@@ -23925,7 +23933,7 @@ static inline VkFFTResult VkFFTPlanR2CMultiUploadDecomposition(VkFFTApplication*
 				res = zeModuleGetNativeBinary(axis->VkFFTModule, &codeSize, (uint8_t*)axis->binary);
 				if (res != ZE_RESULT_SUCCESS) {
 					free(axis->binary);
-					axis->binary=0;	
+					axis->binary = 0;
 					free(code0);
 					code0 = 0;
 					deleteVkFFT(app);
@@ -23943,7 +23951,7 @@ static inline VkFFTResult VkFFTPlanR2CMultiUploadDecomposition(VkFFTApplication*
 		if (res != ZE_RESULT_SUCCESS) {
 			if (app->configuration.saveApplicationToString) {
 				free(axis->binary);
-				axis->binary=0;	
+				axis->binary = 0;
 			}
 			free(code0);
 			code0 = 0;
@@ -23976,8 +23984,7 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 	VkFFTAxis* axis = (reverseBluesteinMultiUpload) ? &FFTPlan->inverseBluesteinAxes[axis_id][axis_upload_id] : &FFTPlan->axes[axis_id][axis_upload_id];
 
 	axis->specializationConstants.sourceFFTSize = app->configuration.size[axis_id];
-	axis->specializationConstants.numBatches = app->configuration.numberBatches;
-	// if ((app->configuration.FFTdim == 1) && (FFTPlan->actualFFTSizePerAxis[axis_id][1] == 1) && ((app->configuration.numberBatches > 1) || (app->actualNumBatches > 1)) && (!app->configuration.performConvolution) && (app->configuration.coordinateFeatures == 1)) {
+	// Elliott: PerformConvolution is removed to allow mergeR2CSequences when doing 1D convolution
 	if ((app->configuration.FFTdim == 1) && (FFTPlan->actualFFTSizePerAxis[axis_id][1] == 1) && ((app->configuration.numberBatches > 1) || (app->actualNumBatches > 1)) && (app->configuration.coordinateFeatures == 1)) {
 		if (app->configuration.numberBatches > 1) {
 			app->actualNumBatches = app->configuration.numberBatches;
@@ -23985,7 +23992,7 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 		}
 		FFTPlan->actualFFTSizePerAxis[axis_id][1] = app->actualNumBatches;
 	}
-
+	axis->specializationConstants.numBatches = app->configuration.numberBatches;
 	axis->specializationConstants.warpSize = app->configuration.warpSize;
 	axis->specializationConstants.numSharedBanks = app->configuration.numSharedBanks;
 	axis->specializationConstants.useUint64 = app->configuration.useUint64;
@@ -26286,7 +26293,7 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 				(uint8_t*)code,
 				pBuildFlags,
 				0
-			};		
+			};
 			res = zeModuleCreate(app->configuration.context[0], app->configuration.device[0], &moduleDesc, &axis->VkFFTModule, 0);
 			if (res != ZE_RESULT_SUCCESS) {
 				free(code);
@@ -26332,7 +26339,7 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 			fseek(temp, 0L, SEEK_END);
 			uint64_t spv_size = ftell(temp);
 			rewind(temp);
-			
+
 			uint8_t* spv_binary = (uint8_t*)malloc(spv_size);
 			if (!spv_binary) {
 				free(code0);
@@ -26359,14 +26366,14 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 			res = zeModuleCreate(app->configuration.context[0], app->configuration.device[0], &moduleDesc, &axis->VkFFTModule, 0);
 			if (res != ZE_RESULT_SUCCESS) {
 				free(spv_binary);
-				spv_binary=0;
+				spv_binary = 0;
 				free(code0);
 				code0 = 0;
 				deleteVkFFT(app);
 				return VKFFT_ERROR_FAILED_TO_CREATE_PROGRAM;
 			}
 			free(spv_binary);
-			spv_binary=0;
+			spv_binary = 0;
 			if (app->configuration.saveApplicationToString) {
 				size_t codeSize;
 				res = zeModuleGetNativeBinary(axis->VkFFTModule, &codeSize, 0);
@@ -26387,7 +26394,7 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 				res = zeModuleGetNativeBinary(axis->VkFFTModule, &codeSize, (uint8_t*)axis->binary);
 				if (res != ZE_RESULT_SUCCESS) {
 					free(axis->binary);
-					axis->binary=0;	
+					axis->binary = 0;
 					free(code0);
 					code0 = 0;
 					deleteVkFFT(app);
@@ -26405,7 +26412,7 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 		if (res != ZE_RESULT_SUCCESS) {
 			if (app->configuration.saveApplicationToString) {
 				free(axis->binary);
-				axis->binary=0;	
+				axis->binary = 0;
 			}
 			free(code0);
 			code0 = 0;
@@ -27050,9 +27057,9 @@ static inline VkFFTResult initializeVkFFT(VkFFTApplication* app, VkFFTConfigurat
 			checkBufferSizeFor64BitAddressing += app->configuration.bufferSize[i];
 		else {
 			checkBufferSizeFor64BitAddressing = app->configuration.size[0] * app->configuration.size[1] * app->configuration.size[2] * 8;
-			if (app->configuration.coordinateFeatures > 0) checkBufferSizeFor64BitAddressing*= app->configuration.coordinateFeatures;
-			if (app->configuration.numberBatches > 0) checkBufferSizeFor64BitAddressing*= app->configuration.numberBatches;
-			if (app->configuration.numberKernels > 0) checkBufferSizeFor64BitAddressing*= app->configuration.numberKernels;
+			if (app->configuration.coordinateFeatures > 0) checkBufferSizeFor64BitAddressing *= app->configuration.coordinateFeatures;
+			if (app->configuration.numberBatches > 0) checkBufferSizeFor64BitAddressing *= app->configuration.numberBatches;
+			if (app->configuration.numberKernels > 0) checkBufferSizeFor64BitAddressing *= app->configuration.numberKernels;
 			if (app->configuration.doublePrecision) checkBufferSizeFor64BitAddressing *= 2;
 		}
 	}
@@ -27653,7 +27660,10 @@ static inline VkFFTResult dispatchEnhanced(VkFFTApplication* app, VkFFTAxis* axi
 							pushConstID++;
 						}
 						if (axis->specializationConstants.performPostCompilationKernelOffset) {
-							axis->pushConstants.dataUint32[pushConstID] = (uint32_t)(axis->specializationConstants.kernelOffset / axis->specializationConstants.kernelNumberByteSize);
+							if (axis->specializationConstants.kernelNumberByteSize != 0)
+								axis->pushConstants.dataUint32[pushConstID] = (uint32_t)(axis->specializationConstants.kernelOffset / axis->specializationConstants.kernelNumberByteSize);
+							else
+								axis->pushConstants.dataUint64[pushConstID] = 0;
 							pushConstID++;
 						}
 					}
@@ -27936,8 +27946,8 @@ static inline VkFFTResult dispatchEnhanced(VkFFTApplication* app, VkFFTAxis* axi
 					args_id++;
 				}
 				size_t local_work_size[3] = { (size_t)axis->specializationConstants.localSize[0], (size_t)axis->specializationConstants.localSize[1],(size_t)axis->specializationConstants.localSize[2] };
-				ze_group_count_t launchArgs = { (uint32_t)maxBlockSize[0], (uint32_t)maxBlockSize[1],(uint32_t)maxBlockSize[2]};
-				result = zeCommandListAppendLaunchKernel(app->configuration.commandList[0], axis->VkFFTKernel, &launchArgs, 0,0,0);
+				ze_group_count_t launchArgs = { (uint32_t)maxBlockSize[0], (uint32_t)maxBlockSize[1],(uint32_t)maxBlockSize[2] };
+				result = zeCommandListAppendLaunchKernel(app->configuration.commandList[0], axis->VkFFTKernel, &launchArgs, 0, 0, 0);
 				//printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " - %" PRIu64 " %" PRIu64 " %" PRIu64 "\n", maxBlockSize[0], maxBlockSize[1], maxBlockSize[2], axis->specializationConstants.localSize[0], axis->specializationConstants.localSize[1], axis->specializationConstants.localSize[2]);
 
 				if (result != ZE_RESULT_SUCCESS) {
@@ -28137,7 +28147,7 @@ static inline VkFFTResult VkFFTAppend(VkFFTApplication* app, int inverse, VkFFTL
 
 				dispatchBlock[0] = (uint64_t)ceil(((app->configuration.size[0] / 2 + 1) * app->configuration.size[1] * app->configuration.size[2]) / (double)(2 * axis->axisBlock[0]));
 				dispatchBlock[1] = 1;
-				dispatchBlock[2] = maxCoordinate * app->configuration.numberBatches;
+				dispatchBlock[2] = maxCoordinate * axis->specializationConstants.numBatches;
 				resFFT = dispatchEnhanced(app, axis, dispatchBlock);
 				if (resFFT != VKFFT_SUCCESS) return resFFT;
 				printDebugInformation(app, axis);
@@ -28589,7 +28599,7 @@ static inline VkFFTResult VkFFTAppend(VkFFTApplication* app, int inverse, VkFFTL
 
 				dispatchBlock[0] = (uint64_t)ceil(((app->configuration.size[0] / 2 + 1) * app->configuration.size[1] * app->configuration.size[2]) / (double)(2 * axis->axisBlock[0]));
 				dispatchBlock[1] = 1;
-				dispatchBlock[2] = app->configuration.coordinateFeatures * app->configuration.numberBatches;
+				dispatchBlock[2] = app->configuration.coordinateFeatures * axis->specializationConstants.numBatches;
 				resFFT = dispatchEnhanced(app, axis, dispatchBlock);
 				if (resFFT != VKFFT_SUCCESS) return resFFT;
 				printDebugInformation(app, axis);
@@ -28688,6 +28698,6 @@ static inline VkFFTResult VkFFTAppend(VkFFTApplication* app, int inverse, VkFFTL
 	return resFFT;
 }
 static inline int VkFFTGetVersion() {
-	return 10224; //X.XX.XX format
+	return 10225; //X.XX.XX format
 }
 #endif
