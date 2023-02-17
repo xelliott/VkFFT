@@ -407,7 +407,7 @@ typedef enum VkFFTResult {
 	VKFFT_ERROR_FAILED_TO_SUBMIT_BARRIER = 4055
 } VkFFTResult;
 
-const char* getVkFFTErrorString(VkFFTResult result)
+static inline const char* getVkFFTErrorString(VkFFTResult result)
 {
 	switch (result)
     {
