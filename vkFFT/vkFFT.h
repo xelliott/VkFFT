@@ -8120,16 +8120,20 @@ static inline VkFFTResult appendSharedMemoryVkFFT(VkFFTSpecializationConstantsLa
 	}
 	maxSequenceSharedMemory = sc->sharedMemSize / vecSize;
 	//maxSequenceSharedMemoryPow2 = sc->sharedMemSizePow2 / vecSize;
-	uint64_t mergeR2C = (sc->mergeSequencesR2C && (sc->axis_id == 0)) ? 2 : 0;
+	uint64_t additionalR2Cshared = 0;
+	if ((sc->performR2C || ((sc->performDCT == 2) || ((sc->performDCT == 4) && ((sc->fftDim % 2) != 0)))) && (sc->mergeSequencesR2C) && (sc->axis_id == 0) && (!sc->performR2CmultiUpload)) {
+		additionalR2Cshared = (sc->fftDim % 2 == 0) ? 2 : 1;
+		if ((sc->performDCT == 2) || ((sc->performDCT == 4) && ((sc->fftDim % 2) != 0))) additionalR2Cshared = 1;
+	}
 	switch (sharedType) {
 	case 0: case 5: case 6: case 110: case 120: case 130: case 140: case 142: case 144://single_c2c + single_r2c
 	{
 		sc->resolveBankConflictFirstStages = 0;
-		sc->sharedStrideBankConflictFirstStages = ((sc->fftDim > sc->numSharedBanks / 2) && ((sc->fftDim & (sc->fftDim - 1)) == 0)) ? sc->fftDim / sc->registerBoost * (sc->numSharedBanks / 2 + 1) / (sc->numSharedBanks / 2) : sc->fftDim / sc->registerBoost;
-		sc->sharedStrideReadWriteConflict = ((sc->numSharedBanks / 2 <= sc->localSize[1])) ? sc->fftDim / sc->registerBoost + 1 : sc->fftDim / sc->registerBoost + (sc->numSharedBanks / 2) / sc->localSize[1];
-		if (sc->sharedStrideReadWriteConflict < sc->fftDim / sc->registerBoost + mergeR2C) sc->sharedStrideReadWriteConflict = sc->fftDim / sc->registerBoost + mergeR2C;
+		sc->sharedStrideBankConflictFirstStages = ((sc->fftDim > sc->numSharedBanks / 2) && ((sc->fftDim & (sc->fftDim - 1)) == 0)) ? (sc->fftDim / sc->registerBoost + additionalR2Cshared) * (sc->numSharedBanks / 2 + 1) / (sc->numSharedBanks / 2) : sc->fftDim / sc->registerBoost + additionalR2Cshared;
+		sc->sharedStrideReadWriteConflict = ((sc->numSharedBanks / 2 <= sc->localSize[1])) ? sc->fftDim / sc->registerBoost + additionalR2Cshared + 1 : sc->fftDim / sc->registerBoost + additionalR2Cshared + (sc->numSharedBanks / 2) / sc->localSize[1];
+		if (sc->sharedStrideReadWriteConflict < (sc->fftDim / sc->registerBoost + additionalR2Cshared)) sc->sharedStrideReadWriteConflict = sc->fftDim / sc->registerBoost + additionalR2Cshared;
 		if (sc->useRaderFFT) {
-			uint64_t max_stride = sc->fftDim;
+			uint64_t max_stride = sc->fftDim / sc->registerBoost + additionalR2Cshared;
 			uint64_t max_shift = 0;
 			for (uint64_t i = 0; i < sc->numRaderPrimes; i++) {
 
@@ -8156,13 +8160,13 @@ static inline VkFFTResult appendSharedMemoryVkFFT(VkFFTSpecializationConstantsLa
 			sc->maxSharedStride = (sc->maxSharedStride < sc->sharedStrideRaderFFT) ? sc->sharedStrideRaderFFT : sc->maxSharedStride;
 
 		sc->usedSharedMemory = vecSize * sc->localSize[1] * sc->maxSharedStride;
-		sc->maxSharedStride = ((sc->sharedMemSize < sc->usedSharedMemory)) ? sc->fftDim / sc->registerBoost : sc->maxSharedStride;
+		sc->maxSharedStride = ((sc->sharedMemSize < sc->usedSharedMemory)) ? sc->fftDim / sc->registerBoost + additionalR2Cshared : sc->maxSharedStride;
 
-		sc->sharedStrideBankConflictFirstStages = (sc->maxSharedStride == sc->fftDim / sc->registerBoost) ? sc->fftDim / sc->registerBoost : sc->sharedStrideBankConflictFirstStages;
-		sc->sharedStrideReadWriteConflict = (sc->maxSharedStride == sc->fftDim / sc->registerBoost) ? sc->fftDim / sc->registerBoost : sc->sharedStrideReadWriteConflict;
+		sc->sharedStrideBankConflictFirstStages = (sc->maxSharedStride == (sc->fftDim / sc->registerBoost + additionalR2Cshared)) ? sc->fftDim / sc->registerBoost + additionalR2Cshared : sc->sharedStrideBankConflictFirstStages;
+		sc->sharedStrideReadWriteConflict = (sc->maxSharedStride == (sc->fftDim / sc->registerBoost + additionalR2Cshared)) ? sc->fftDim / sc->registerBoost + additionalR2Cshared : sc->sharedStrideReadWriteConflict;
 		if (sc->useRaderFFT) {
-			sc->sharedStrideRaderFFT = (sc->maxSharedStride == sc->fftDim / sc->registerBoost) ? sc->fftDim / sc->registerBoost : sc->sharedStrideRaderFFT;
-			sc->sharedShiftRaderFFT = (sc->maxSharedStride == sc->fftDim / sc->registerBoost) ? 0 : sc->sharedShiftRaderFFT;
+			sc->sharedStrideRaderFFT = (sc->maxSharedStride == (sc->fftDim / sc->registerBoost + additionalR2Cshared)) ? sc->fftDim / sc->registerBoost + additionalR2Cshared : sc->sharedStrideRaderFFT;
+			sc->sharedShiftRaderFFT = (sc->maxSharedStride == (sc->fftDim / sc->registerBoost + additionalR2Cshared)) ? 0 : sc->sharedShiftRaderFFT;
 		}
 		//sc->maxSharedStride += mergeR2C;
 		//printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n", sc->maxSharedStride, sc->sharedStrideBankConflictFirstStages, sc->sharedStrideReadWriteConflict, sc->localSize[1], sc->fftDim);
@@ -8203,12 +8207,12 @@ static inline VkFFTResult appendSharedMemoryVkFFT(VkFFTSpecializationConstantsLa
 	{
 		uint64_t shift = (sc->fftDim < (sc->numSharedBanks / 2)) ? (sc->numSharedBanks / 2) / sc->fftDim : 1;
 		sc->sharedStrideReadWriteConflict = ((sc->axisSwapped) && ((sc->localSize[0] % 4) == 0)) ? sc->localSize[0] + shift : sc->localSize[0];
-		sc->maxSharedStride = ((maxSequenceSharedMemory < sc->sharedStrideReadWriteConflict* sc->fftDim / sc->registerBoost)) ? sc->localSize[0] : sc->sharedStrideReadWriteConflict;
+		sc->maxSharedStride = ((maxSequenceSharedMemory < sc->sharedStrideReadWriteConflict* (sc->fftDim / sc->registerBoost + additionalR2Cshared))) ? sc->localSize[0] : sc->sharedStrideReadWriteConflict;
 		sc->sharedStrideReadWriteConflict = (sc->maxSharedStride == sc->localSize[0]) ? sc->localSize[0] : sc->sharedStrideReadWriteConflict;
 		sc->tempLen = sprintf(sc->tempStr, "%s sharedStride = %" PRIu64 ";\n", uintType, sc->maxSharedStride);
 		res = VkAppendLine(sc);
 		if (res != VKFFT_SUCCESS) return res;
-		sc->usedSharedMemory = vecSize * sc->maxSharedStride * (sc->fftDim + mergeR2C) / sc->registerBoost;
+		sc->usedSharedMemory = vecSize * sc->maxSharedStride * (sc->fftDim / sc->registerBoost + additionalR2Cshared);
 		if (sc->useRaderMult) {
 			for (uint64_t i = 0; i < 20; i++) {
 				sc->RaderKernelOffsetShared[i] += sc->usedSharedMemory / vecSize;
@@ -9372,7 +9376,7 @@ static inline VkFFTResult appendReadDataVkFFT(VkFFTSpecializationConstantsLayout
 		}
 		char shiftY2[100] = "";
 		if (sc->performWorkGroupShift[1])
-			sprintf(shiftY, " + consts.workGroupShiftY ");
+			sprintf(shiftY2, " + consts.workGroupShiftY ");
 		uint64_t used_registers_read = (sc->axisSwapped) ? (uint64_t)ceil(sc->fftDim / (double)sc->localSize[1]) : (uint64_t)ceil(sc->fftDim / (double)sc->localSize[0]);
 		if (sc->registerBoost > 1) used_registers_read /= sc->registerBoost;
 		if (sc->fftDim < sc->fft_dim_full) {
@@ -10232,7 +10236,7 @@ static inline VkFFTResult appendReadDataVkFFT(VkFFTSpecializationConstantsLayout
 			sprintf(shiftY, " + consts.workGroupShiftY*%s ", sc->gl_WorkGroupSize_y);
 		char shiftY2[100] = "";
 		if (sc->performWorkGroupShift[1])
-			sprintf(shiftY, " + consts.workGroupShiftY ");
+			sprintf(shiftY2, " + consts.workGroupShiftY ");
 		if (sc->fftDim < sc->fft_dim_full) {
 			//not implemented
 			if (sc->axisSwapped)
@@ -12278,7 +12282,7 @@ static inline VkFFTResult appendReadDataVkFFT(VkFFTSpecializationConstantsLayout
 		}
 		char shiftY2[100] = "";
 		if (sc->performWorkGroupShift[1])
-			sprintf(shiftY, " + consts.workGroupShiftY ");
+			sprintf(shiftY2, " + consts.workGroupShiftY ");
 		if (sc->fftDim < sc->fft_dim_full) {
 			if (sc->axisSwapped) {
 				sc->tempLen = sprintf(sc->tempStr, "		%s numActiveThreads = ((%s/%" PRIu64 ")==%" PRIu64 ") ? %" PRIu64 " : %" PRIu64 ";\n", uintType, sc->gl_WorkGroupID_x, sc->firstStageStartSize / sc->fftDim, ((uint64_t)floor(sc->fft_dim_full / ((double)sc->localSize[0] * sc->fftDim))) / (sc->firstStageStartSize / sc->fftDim), (sc->fft_dim_full - (sc->firstStageStartSize / sc->fftDim) * ((((uint64_t)floor(sc->fft_dim_full / ((double)sc->localSize[0] * sc->fftDim))) / (sc->firstStageStartSize / sc->fftDim)) * sc->localSize[0] * sc->fftDim)) / sc->min_registers_per_thread / (sc->firstStageStartSize / sc->fftDim), sc->localSize[0] * sc->localSize[1]);// sc->fft_dim_full, sc->gl_WorkGroupID_x, shiftX, sc->firstStageStartSize / sc->fftDim, sc->fftDim, sc->gl_WorkGroupID_x, shiftX, sc->firstStageStartSize / sc->fftDim, sc->localSize[0] * sc->firstStageStartSize, sc->fft_dim_full / (sc->localSize[0] * sc->fftDim));
@@ -21472,7 +21476,7 @@ static inline VkFFTResult appendWriteDataVkFFT(VkFFTSpecializationConstantsLayou
 
 		char shiftY2[100] = "";
 		if (sc->performWorkGroupShift[1])
-			sprintf(shiftY, " + consts.workGroupShiftY ");
+			sprintf(shiftY2, " + consts.workGroupShiftY ");
 		if (sc->fftDim < sc->fft_dim_full) {
 			if (sc->axisSwapped) {
 				if (!sc->reorderFourStep) {
@@ -24135,7 +24139,7 @@ if (%s==%" PRIu64 ") \n\
 
 		char shiftY2[100] = "";
 		if (sc->performWorkGroupShift[1])
-			sprintf(shiftY, " + consts.workGroupShiftY ");
+			sprintf(shiftY2, " + consts.workGroupShiftY ");
 		if (sc->fftDim < sc->fft_dim_full) {
 			if (sc->axisSwapped) {
 				if (!sc->reorderFourStep) {
@@ -35866,7 +35870,12 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 		axis->specializationConstants.performDCT = app->configuration.performDCT;
 	}
 	if ((axis->specializationConstants.performR2CmultiUpload) && (app->configuration.size[0] % 2 != 0)) return VKFFT_ERROR_UNSUPPORTED_FFT_LENGTH_R2C;
-	axis->specializationConstants.mergeSequencesR2C = ((axis->specializationConstants.fftDim < maxSequenceLengthSharedMemory) && ((FFTPlan->actualFFTSizePerAxis[axis_id][1] % 2) == 0) && ((FFTPlan->actualPerformR2CPerAxis[axis_id]) || (((app->configuration.performDCT == 3) || (app->configuration.performDCT == 2) || (app->configuration.performDCT == 1) || ((app->configuration.performDCT == 4) && ((app->configuration.size[axis_id] % 2) != 0))) && (axis_id == 0)))) ? (1 - app->configuration.disableMergeSequencesR2C) : 0;
+	uint64_t additionalR2Cshared = 0;
+	if ((axis->specializationConstants.performR2C || ((axis->specializationConstants.performDCT == 2) || ((axis->specializationConstants.performDCT == 4) && ((axis->specializationConstants.fftDim % 2) != 0)))) && (axis->specializationConstants.axis_id == 0) && (!axis->specializationConstants.performR2CmultiUpload)) {
+		additionalR2Cshared = ((axis->specializationConstants.fftDim % 2) == 0) ? 2 : 1;
+		if ((axis->specializationConstants.performDCT == 2) || ((axis->specializationConstants.performDCT == 4) && ((axis->specializationConstants.fftDim % 2) != 0))) additionalR2Cshared = 1;
+	}
+	axis->specializationConstants.mergeSequencesR2C = (((axis->specializationConstants.fftDim + additionalR2Cshared) <= maxSequenceLengthSharedMemory) && ((FFTPlan->actualFFTSizePerAxis[axis_id][1] % 2) == 0) && ((FFTPlan->actualPerformR2CPerAxis[axis_id]) || (((app->configuration.performDCT == 3) || (app->configuration.performDCT == 2) || (app->configuration.performDCT == 1) || ((app->configuration.performDCT == 4) && ((app->configuration.size[axis_id] % 2) != 0))) && (axis_id == 0)))) ? (1 - app->configuration.disableMergeSequencesR2C) : 0;
 	//uint64_t passID = FFTPlan->numAxisUploads[axis_id] - 1 - axis_upload_id;
 	axis->specializationConstants.fft_dim_full = FFTPlan->actualFFTSizePerAxis[axis_id][axis_id];
 	if ((FFTPlan->numAxisUploads[axis_id] > 1) && (axis->specializationConstants.reorderFourStep || app->useBluesteinFFT[axis_id]) && (!app->configuration.userTempBuffer) && (app->configuration.allocateTempBuffer == 0)) {
@@ -37666,7 +37675,10 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 			if (axis->specializationConstants.useRaderFFT) {
 				if (axis->axisBlock[1] < axis->specializationConstants.minRaderFFTThreadNum) axis->axisBlock[1] = axis->specializationConstants.minRaderFFTThreadNum;
 			}
-
+			if (axis->groupedBatch * axis->axisBlock[1] < axis->specializationConstants.warpSize) {
+				axis->groupedBatch = axis->specializationConstants.warpSize / axis->axisBlock[1];
+				if (axis->groupedBatch == 0) axis->groupedBatch = 1;
+			}
 			axis->axisBlock[0] = (FFTPlan->actualFFTSizePerAxis[axis_id][0] > axis->groupedBatch) ? axis->groupedBatch : FFTPlan->actualFFTSizePerAxis[axis_id][0];
 			if (app->configuration.vendorID == 0x10DE) {
 				while ((axis->axisBlock[1] * axis->axisBlock[0] >= 2 * app->configuration.aimThreads) && (axis->axisBlock[0] > maxBatchCoalesced)) {
@@ -37713,7 +37725,10 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 			if (axis->specializationConstants.useRaderFFT) {
 				if (axis->axisBlock[1] < axis->specializationConstants.minRaderFFTThreadNum) axis->axisBlock[1] = axis->specializationConstants.minRaderFFTThreadNum;
 			}
-
+			if (axis->groupedBatch * axis->axisBlock[1] < axis->specializationConstants.warpSize) {
+				axis->groupedBatch = axis->specializationConstants.warpSize / axis->axisBlock[1];
+				if (axis->groupedBatch == 0) axis->groupedBatch = 1;
+			}
 			axis->axisBlock[0] = (FFTPlan->actualFFTSizePerAxis[axis_id][0] > axis->groupedBatch) ? axis->groupedBatch : FFTPlan->actualFFTSizePerAxis[axis_id][0];
 			if (app->configuration.vendorID == 0x10DE) {
 				while ((axis->axisBlock[1] * axis->axisBlock[0] >= 2 * app->configuration.aimThreads) && (axis->axisBlock[0] > maxBatchCoalesced)) {
