@@ -388,6 +388,11 @@ VkFFTResult launchVkFFT(VkGPU* vkGPU, uint64_t sample_id, bool file_output, FILE
 		resFFT = sample_52_convolution_VkFFT_single_2d_batched_r2c(vkGPU, file_output, output, isCompilerInitialized);
 		break;
 	}
+	case 53:
+	{
+		resFFT = sample_53_convolution_VkFFT_single_2d_batched_r2c_pad(vkGPU, file_output, output, isCompilerInitialized);
+		break;
+	}
 	case 110:
 	{
 		// resFFT = sample_100_benchmark_VkFFT_single_nd_dct(vkGPU, file_output, output, isCompilerInitialized, 1);

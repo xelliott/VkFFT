@@ -72,15 +72,15 @@ VkFFTResult sample_52_convolution_VkFFT_single_2d_batched_r2c(
   // loss.
 
   configuration.FFTdim = 1;   // FFT dimension, 1D, 2D or 3D (default 1).
-  configuration.size[0] = 192; // Multidimensional FFT dimensions sizes (default
+  configuration.size[0] = 4096; // Multidimensional FFT dimensions sizes (default
                               // 1). For best performance (and stability), order
                               // dimensions in descendant size order as: x>y>z.
   configuration.size[1] = 1;
   configuration.size[2] = 1;
 
-  using floatT = float;
-  using complexT = cuFloatComplex;
-  configuration.doublePrecision = 0;
+  using floatT = double;
+  using complexT = cuDoubleComplex;
+  configuration.doublePrecision = 1;
   configuration.kernelConvolution =
       true; // specify if this plan is used to create kernel for convolution
   configuration.performR2C =
@@ -199,7 +199,7 @@ VkFFTResult sample_52_convolution_VkFFT_single_2d_batched_r2c(
   auto forward_configuration = configuration;
   forward_configuration.kernelConvolution = false;
   forward_configuration.performConvolution = true;
-  forward_configuration.numberBatches = 386;
+  forward_configuration.numberBatches = 2;
   forward_configuration.isInputFormatted = true;
   forward_configuration.isOutputFormatted = true;
 
