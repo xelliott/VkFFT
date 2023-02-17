@@ -20,6 +20,8 @@ else()
 endif()
 
 option(build_VkFFT_FFTW_precision "Build VkFFT FFTW precision comparison" OFF)
+option(VkFFT_use_FP128_Bluestein_RaderFFT "Use FP128 for Bluestein and Rader FFT kernel calculations. Currently requires FP128 FFT library, like FFTWl" OFF)
+
 if (MSVC)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
@@ -125,7 +127,10 @@ elseif(${VKFFT_BACKEND} EQUAL 4)
 	target_include_directories(${PROJECT_NAME} PUBLIC ${LevelZero_INCLUDES})
 endif()
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC -DVK_API_VERSION=11)#10 - Vulkan 1.0, 11 - Vulkan 1.1, 12 - Vulkan 1.2
+target_compile_definitions(${PROJECT_NAME} PUBLIC -DVK_API_VERSION=11)#10 - Vulkan 1.0, 11 - Vulkan 1.1, 12 - Vulkan 1.2 
+if(VkFFT_use_FP128_Bluestein_RaderFFT)
+        target_compile_definitions(${PROJECT_NAME} PUBLIC -DVkFFT_use_FP128_Bluestein_RaderFFT)
+endif()  
 if(${VKFFT_BACKEND} EQUAL 0)
 	FetchContent_Declare(
 		glslang-master
@@ -165,13 +170,13 @@ elseif(${VKFFT_BACKEND} EQUAL 4)
 	target_link_libraries(${PROJECT_NAME} PUBLIC ze_loader VkFFT half)
 endif()
 
-if(build_VkFFT_FFTW_precision)
+if(build_VkFFT_FFTW_precision OR VkFFT_use_FP128_Bluestein_RaderFFT)
 	add_definitions(-DUSE_FFTW)
 	set(FFTW3_LIB_DIR "/usr/lib/x86_64-linux-gnu/")
 	set(FFTW3_INCLUDE_DIR "/usr/include/")
 	find_library(
 		FFTW_LIB
-		NAMES "libfftw3-3" "fftw3"
+		NAMES "libfftw3-3" "fftw3" 
 		PATHS ${FFTW3_LIB_DIR}
 		PATH_SUFFIXES "lib" "lib64"
 		NO_DEFAULT_PATH
@@ -183,9 +188,19 @@ if(build_VkFFT_FFTW_precision)
 		PATH_SUFFIXES "include"
 		NO_DEFAULT_PATH
 	  )
-
-	target_link_libraries (${PROJECT_NAME} PUBLIC ${FFTW_LIB})
-	target_include_directories(${PROJECT_NAME} PUBLIC ${FFTW_INCLUDES})
+        target_include_directories(${PROJECT_NAME} PUBLIC ${FFTW_INCLUDES})
+if(VkFFT_use_FP128_Bluestein_RaderFFT)        
+	find_library(
+		FFTWL_LIB
+		NAMES "libfftw3l" "fftw3l"
+		PATHS ${FFTW3_LIB_DIR}
+		PATH_SUFFIXES "lib" "lib64"
+		NO_DEFAULT_PATH
+	  )
+	target_link_libraries (${PROJECT_NAME} PUBLIC ${FFTW_LIB} ${FFTWL_LIB})
+else()
+        target_link_libraries (${PROJECT_NAME} PUBLIC ${FFTW_LIB})
+endif()
 endif()
 
 # if(build_VkFFT_cuFFT_benchmark)
