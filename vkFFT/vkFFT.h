@@ -19813,7 +19813,7 @@ static inline VkFFTResult appendKernelConvolution(VkFFTSpecializationConstantsLa
 			res = VkAppendLine(sc);
 			if (res != VKFFT_SUCCESS) return res;
 			sprintf(index_x, "(%s%s) %% (%" PRIu64 ")", sc->gl_GlobalInvocationID_x, shiftX, sc->fft_dim_x);
-			if (sc->mergeSequencesR2C == 1 && sc->axisSwapped == 1 && sc->axis_id == 0) {
+			if (sc->axisSwapped == 1 && sc->axis_id == 0) {
 				// Elliott: this branch is added for 1D convolution, no shift to allow N batch 1 kernel convolution
 				sprintf(index_y, "(%s+%" PRIu64 ")", sc->gl_LocalInvocationID_y, i * sc->localSize[1]);
 			} else {
