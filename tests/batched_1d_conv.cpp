@@ -512,6 +512,12 @@ VkFFTResult launchVkFFT(VkGPU *vkGPU) {
       perform_batched_1d_r2c_convolution_VkFFT<double>(vkGPU, 1024, 8));
   CHECK_VKFFT_RESULT(
       perform_batched_1d_r2c_convolution_VkFFT<double>(vkGPU, 1024, 9));
+  CHECK_VKFFT_RESULT(
+      perform_batched_1d_r2c_convolution_VkFFT<double>(vkGPU, 2048, 1));
+  CHECK_VKFFT_RESULT(
+      perform_batched_1d_r2c_convolution_VkFFT<double>(vkGPU, 2048, 2));
+  CHECK_VKFFT_RESULT(
+      perform_batched_1d_r2c_convolution_VkFFT<double>(vkGPU, 2048, 8));
 
 #if (VKFFT_BACKEND == 0)
   vkDestroyFence(vkGPU->device, vkGPU->fence, NULL);
