@@ -296,7 +296,9 @@ static inline void appendKernelOffset(VkFFTSpecializationConstantsLayout* sc, in
 
 	if (type == 1) {
 		if (sc->axis_id == 0) {
-			if (sc->size[1].data.i > 1) {
+			if (sc->size[1].data.i > 1
+				// Elliott: skip y shift for 1D R2C with single kernel and multiple batches
+				&& (sc->singleKernelMultipleBatches == 0 || sc->performR2C != 1 || sc->numFFTdims != 1)) {
 				if (sc->performWorkGroupShift[1]) {
 					PfAdd(sc, &sc->blockInvocationID, &sc->gl_WorkGroupID_y, &sc->workGroupShiftY);
 					temp_int.data.i = sc->inputStride[1].data.i;
@@ -315,7 +317,9 @@ static inline void appendKernelOffset(VkFFTSpecializationConstantsLayout* sc, in
 		}
 	}
 	else {
-		if (sc->size[1].data.i > 1) {
+		if (sc->size[1].data.i > 1
+			// Elliott: skip y shift for 1D R2C with single kernel and multiple batches
+			&& (sc->singleKernelMultipleBatches == 0 || sc->performR2C != 1 || sc->numFFTdims != 1)) {
 			if (sc->numAxisUploads != 1) {
 				if (sc->performWorkGroupShift[1]) {
 					PfAdd(sc, &sc->blockInvocationID, &sc->gl_WorkGroupID_y, &sc->workGroupShiftY);
@@ -500,7 +504,9 @@ static inline void appendReadWriteDataVkFFT_nonstrided(VkFFTSpecializationConsta
 	else
 		fftDim.data.i = sc->fftDim.data.i;
 
-	if ((((type / 10) == 60) && (readWrite == 0)) || (((type / 10) == 50) && (readWrite == 1))) {
+	if ((((type / 10) == 60) && (readWrite == 0)) ||
+		// Elliott: 1D R2C with convolution, the output is already inverse transformed (skip stride = fftDim / 2)
+		(((type / 10) == 50) && (readWrite == 1) && ((sc->numAxisUploads > 1) || (sc->convolutionStep != 1)))) {
 		temp_int.data.i = 2;
 		PfDiv(sc, &fftDim, &fftDim, &temp_int);
 		PfInc(sc, &fftDim);
@@ -592,7 +598,9 @@ static inline void appendReadWriteDataVkFFT_nonstrided(VkFFTSpecializationConsta
 		}
 	}
 
-	if ((((type / 10) == 60) && (readWrite == 0)) || (((type / 10) == 50) && (readWrite == 1))) {
+	if ((((type / 10) == 60) && (readWrite == 0)) ||
+		// Elliott: 1D R2C with convolution, the output is already inverse transformed (skip change of stride)
+		(((type / 10) == 50) && (readWrite == 1) && ((sc->numAxisUploads > 1) || (sc->convolutionStep != 1)))) {
 		PfMul(sc, &used_registers, &fftDim, &mult, 0);
 		mult.data.i = 1;
 	}
@@ -1064,7 +1072,9 @@ static inline void appendReadWriteDataVkFFT_nonstrided(VkFFTSpecializationConsta
 						}
 						PfIf_lt_start(sc, &sc->inoutID_x, &temp_int);
 					}
-					if (((type / 10) == 60) || ((type / 10) == 80) || ((type / 10) == 110) || ((type / 10) == 111) || ((type / 10) == 120) || ((type / 10) == 121) || ((type / 10) == 130) || ((type / 10) == 131) || ((type / 10) == 142) || ((type / 10) == 143)) {
+					if (((type / 10) == 60) || ((type / 10) == 80) || ((type / 10) == 110) || ((type / 10) == 111) || ((type / 10) == 120) || ((type / 10) == 121) || ((type / 10) == 130) || ((type / 10) == 131) || ((type / 10) == 142) || ((type / 10) == 143)
+						// Elliott: for 1D R2C with convolution, the output is actually the inverse transform
+						|| (((type / 10) == 50) && (sc->numAxisUploads == 1) && (sc->convolutionStep == 1))) {
 						if (recalculateAtEveryStep_inoutID)
 							checkZeropadStart_currentFFTAxis(sc, readWrite, type, &sc->inoutID_x);
 						if (sc->writeFromRegisters) {

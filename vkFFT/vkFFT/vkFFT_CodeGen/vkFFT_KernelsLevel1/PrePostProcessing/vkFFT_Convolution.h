@@ -247,7 +247,10 @@ static inline void appendKernelConvolution(VkFFTSpecializationConstantsLayout* s
 			PfMul(sc, &sc->tempInt, &sc->inoutID_y, &sc->inputStride[1], 0);
 			PfAdd(sc, &sc->inoutID, &sc->inoutID, &sc->tempInt);
 		}
-		PfAdd(sc, &sc->inoutID, &sc->inoutID, &sc->blockInvocationID);
+		// Elliott: skip y shift for 1D R2C with single kernel multiple batches
+		if (sc->singleKernelMultipleBatches == 0 || sc->performR2C != 1 || sc->numFFTdims != 1) {
+			PfAdd(sc, &sc->inoutID, &sc->inoutID, &sc->blockInvocationID);
+		}
 	}
 
 	for (pfUINT i = 0; i < (pfUINT)used_registers.data.i; i++) {
@@ -270,9 +273,10 @@ static inline void appendKernelConvolution(VkFFTSpecializationConstantsLayout* s
 				}
 				else {
 					//&sc->tempIntLen = sprintf(&sc->tempIntStr, "		combinedID = (%s + %" PRIu64 " * %s) + %" PRIu64 ";\n", &sc->gl_LocalInvocationID_x, &sc->localSize[0], &sc->gl_LocalInvocationID_y, (i + k * used_registers) * &sc->localSize[0] * &sc->localSize[1]);
-					PfMul(sc, &sc->combinedID, &sc->localSize[0], &sc->gl_LocalInvocationID_y, 0);
+					// Elliott:: not sure if the change below applies to all cases
+					PfMul(sc, &sc->combinedID, &sc->fftDim, &sc->gl_LocalInvocationID_y, 0);
 
-					temp_int.data.i = (i)*sc->localSize[0].data.i * sc->localSize[1].data.i;
+					temp_int.data.i = (i)*sc->localSize[0].data.i;
 
 					PfAdd(sc, &sc->combinedID, &sc->combinedID, &temp_int);
 					PfAdd(sc, &sc->combinedID, &sc->combinedID, &sc->gl_LocalInvocationID_x);
@@ -280,7 +284,12 @@ static inline void appendKernelConvolution(VkFFTSpecializationConstantsLayout* s
 				PfMod(sc, &sc->inoutID_x, &sc->combinedID, &sc->fftDim);
 				PfDiv(sc, &sc->inoutID_y, &sc->combinedID, &sc->fftDim);
 
-				PfAdd(sc, &sc->inoutID_y, &sc->inoutID_y, &sc->shiftY);
+				// sc->currentLen += sprintf(sc->code0 + sc->currentLen, "%s%d%s%d%s\n", "printf(\"threadx %d thready %d inoutId_x %d inoutId_y %d reg.x %f reg.y %f\\n\", threadIdx.x, threadIdx.y, inoutID_x, inoutID_y, temp_", i, ".x, temp_", i, ".y);");
+
+				// Elliott: skip y shift for 1D R2C with single kernel multiple batches
+				if (sc->singleKernelMultipleBatches == 0 || sc->performR2C != 1 || sc->numFFTdims != 1) {
+                    PfAdd(sc, &sc->inoutID_y, &sc->inoutID_y, &sc->shiftY);
+				}
 
 				temp_int.data.i = batching_localSize.data.i;
 
@@ -319,8 +328,11 @@ static inline void appendKernelConvolution(VkFFTSpecializationConstantsLayout* s
 			PfMov(sc, &sc->inoutID, &sc->inoutID_x);
 
 			if (sc->fftDim.data.i == sc->fft_dim_full.data.i) {
+				// Elliott: skip y shift for 1D R2C with single kernel multiple batches
+				if (sc->singleKernelMultipleBatches == 0 || sc->performR2C != 1 || sc->numFFTdims != 1) {
 				PfMul(sc, &sc->tempInt, &sc->inoutID_y, &sc->inputStride[1], 0);
 				PfAdd(sc, &sc->inoutID, &sc->inoutID, &sc->tempInt);
+				}
 			}
 			PfAdd(sc, &sc->inoutID, &sc->inoutID, &sc->blockInvocationID);
 		}

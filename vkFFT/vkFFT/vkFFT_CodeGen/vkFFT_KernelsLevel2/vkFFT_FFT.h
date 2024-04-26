@@ -303,7 +303,11 @@ static inline VkFFTResult shaderGen_FFT(VkFFTSpecializationConstantsLayout* sc, 
 			}
 			if (sc->numAxisUploads == 1) {
 				if ((type == 500) && (sc->mergeSequencesR2C)) {
-					appendR2C_write(sc, type, 1);
+					// Elliott: for 1D R2C FFT with convolution, the last stage is already inverse transformed
+					// so we need to skip the last stage
+					if (sc->numFFTdims != 1 || sc->convolutionStep != 1) {
+                        appendR2C_write(sc, type, 1);
+					}
 				}
 				if ((type / 10) == 120) {
 					appendDCTII_write_III_read(sc, type, 1);

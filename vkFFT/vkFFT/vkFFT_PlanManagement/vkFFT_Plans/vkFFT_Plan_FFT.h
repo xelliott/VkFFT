@@ -52,7 +52,9 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 	axis->specializationConstants.axis_id = (int)axis_id;
 	axis->specializationConstants.axis_upload_id = (int)axis_upload_id;
     axis->specializationConstants.numFFTdims = (int)app->configuration.FFTdim;
-	if ((app->configuration.FFTdim == 1) && (FFTPlan->actualFFTSizePerAxis[axis_id][1] == 1) && ((app->configuration.numberBatches > 1) || (app->actualNumBatches > 1)) && (!app->configuration.performConvolution) && (app->configuration.coordinateFeatures == 1)) {
+	// Elliott: allow 1D FFTs with batch size > 1 and convolution
+	if ((app->configuration.FFTdim == 1) && (FFTPlan->actualFFTSizePerAxis[axis_id][1] == 1) && ((app->configuration.numberBatches > 1) || (app->actualNumBatches > 1)) && (app->configuration.coordinateFeatures == 1)) {
+	// if ((app->configuration.FFTdim == 1) && (FFTPlan->actualFFTSizePerAxis[axis_id][1] == 1) && ((app->configuration.numberBatches > 1) || (app->actualNumBatches > 1)) && (!app->configuration.performConvolution) && (app->configuration.coordinateFeatures == 1)) {
 		if (app->configuration.numberBatches > 1) {
 			app->actualNumBatches = app->configuration.numberBatches;
 			app->configuration.numberBatches = 1;
@@ -801,6 +803,15 @@ static inline VkFFTResult VkFFTPlanAxis(VkFFTApplication* app, VkFFTPlan* FFTPla
 				axis->specializationConstants.outputNumberByteSize = 2 * (1 << (1 + (axis->specializationConstants.outputMemoryCode % 100) / 10));
 			}
 			break;
+		case 50:
+			// Elliott: for 1D R2C convolution, the output is inverse transformed already so the output type is floatType
+			if ((axis->specializationConstants.convolutionStep == 1) && (type % 10 == 0)) {
+				axis->specializationConstants.outputMemoryCode = axis->specializationConstants.floatTypeOutputMemoryCode;
+				axis->specializationConstants.outputNumberByteSize = (1 << (1 + (axis->specializationConstants.outputMemoryCode % 100) / 10));
+        break;
+			} else {
+        [[fallthrough]];
+			}
 		default:
 			axis->specializationConstants.outputMemoryCode = axis->specializationConstants.vecTypeOutputMemoryCode;
 			axis->specializationConstants.outputNumberByteSize = 2 * (1 << (1 + (axis->specializationConstants.outputMemoryCode % 100) / 10));
