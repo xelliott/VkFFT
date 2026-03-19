@@ -175,6 +175,13 @@ if(${VKFFT_BACKEND} EQUAL 0)
 	endif (${glslang_FOUND})
 elseif(${VKFFT_BACKEND} EQUAL 1)
 	target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cudart CUDA::nvrtc CUDA::cuda_driver VkFFT half)
+	add_executable(batched_1d_conv
+		tests/batched_1d_conv.cpp
+		benchmark_scripts/vkFFT_scripts/src/utils_VkFFT.cpp)
+	target_compile_features(batched_1d_conv PUBLIC cxx_std_17)
+	target_compile_definitions(batched_1d_conv PUBLIC VKFFT_BACKEND=${VKFFT_BACKEND})
+	target_include_directories(batched_1d_conv PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/benchmark_scripts/vkFFT_scripts/include/)
+	target_link_libraries(batched_1d_conv PUBLIC CUDA::cudart CUDA::nvrtc CUDA::cuda_driver VkFFT half)
 elseif(${VKFFT_BACKEND} EQUAL 2)
 	target_link_libraries(${PROJECT_NAME} PUBLIC hip::host VkFFT half)
 elseif(${VKFFT_BACKEND} EQUAL 3)
